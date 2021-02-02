@@ -2,16 +2,29 @@ import Foundation
 import Capacitor
 import LocalAuthentication
 
+//enum PluginError:Int {
+//    case BIOMETRIC_UNKNOWN_ERROR = -100
+//    case BIOMETRIC_UNAVAILABLE = -101
+//    case BIOMETRIC_AUTHENTICATION_FAILED = -102
+//    case BIOMETRIC_PERMISSION_NOT_GRANTED = -105
+//    case BIOMETRIC_NOT_ENROLLED = -106
+//    case BIOMETRIC_DISMISSED = -108
+//    case BIOMETRIC_SCREEN_GUARD_UNSECURED = -110
+//    case BIOMETRIC_LOCKED_OUT = -111
+//    case BIOMETRIC_SECRET_NOT_FOUND = -113
+//}
+
+
 enum PluginError:String {
-    case BIOMETRIC_UNKNOWN_ERROR = "-100"
-    case BIOMETRIC_UNAVAILABLE = "-101"
-    case BIOMETRIC_AUTHENTICATION_FAILED = "-102"
-    case BIOMETRIC_PERMISSION_NOT_GRANTED = "-105"
-    case BIOMETRIC_NOT_ENROLLED = "-106"
-    case BIOMETRIC_DISMISSED = "-108"
-    case BIOMETRIC_SCREEN_GUARD_UNSECURED = "-110"
-    case BIOMETRIC_LOCKED_OUT = "-111"
-    case BIOMETRIC_SECRET_NOT_FOUND = "-113"
+    case BIOMETRIC_UNKNOWN_ERROR = "BIOMETRIC_UNKNOWN_ERROR"
+    case BIOMETRIC_UNAVAILABLE = "BIOMETRIC_UNAVAILABLE"
+    case BIOMETRIC_AUTHENTICATION_FAILED = "BIOMETRIC_AUTHENTICATION_FAILED"
+    case BIOMETRIC_PERMISSION_NOT_GRANTED = "BIOMETRIC_PERMISSION_NOT_GRANTED"
+    case BIOMETRIC_NOT_ENROLLED = "BIOMETRIC_NOT_ENROLLED"
+    case BIOMETRIC_DISMISSED = "BIOMETRIC_DISMISSED"
+    case BIOMETRIC_SCREEN_GUARD_UNSECURED = "BIOMETRIC_SCREEN_GUARD_UNSECURED"
+    case BIOMETRIC_LOCKED_OUT = "BIOMETRIC_LOCKED_OUT"
+    case BIOMETRIC_SECRET_NOT_FOUND = "BIOMETRIC_SECRET_NOT_FOUND"
 }
 
 /**
@@ -20,47 +33,18 @@ enum PluginError:String {
  */
 @objc(Keychain)
 public class Keychain: CAPPlugin {
-
-    @objc func echo(_ call: CAPPluginCall) {
-        let value = call.getString("value") ?? ""
-        call.success([
-            "value": value+"3"
-        ])
-    }
-    
-//    @objc func isAvailable(_ call: CAPPluginCall) {
-//        call.success([
-//            "value": true
-//        ])
-//    }
-    
-    
     
     struct ErrorCodes {
         var code: String
     }
 
-
     @objc func isAvailable(_ call: CAPPluginCall){
         let authenticationContext = LAContext();
         var biometryType = "finger";
-        var errorResponse: [AnyHashable: Any] = [
-            "code": 0,
-            "message": "Not Available"
-        ];
         var error:NSError?;
         let allowBackup = call.getBool("allowBackup") ?? true
         let policy:LAPolicy = allowBackup ? .deviceOwnerAuthentication : .deviceOwnerAuthenticationWithBiometrics;
-//        var pluginResult = CDVPluginResult(status: CDVCommandStatus_ERROR, messageAs: "Not available");
         let available = authenticationContext.canEvaluatePolicy(policy, error: &error);
-
-        var results: [String : Any]
-
-        if(error != nil){
-            biometryType = "none";
-            errorResponse["code"] = error?.code;
-            errorResponse["message"] = error?.localizedDescription;
-        }
 
         if (available == true) {
             if #available(iOS 11.0, *) {
@@ -75,12 +59,8 @@ public class Keychain: CAPPlugin {
                     biometryType = "other"
                 }
             }
-
-//            pluginResult = CDVPluginResult(status: CDVCommandStatus_OK, messageAs: biometryType);
-            call.resolve([
-                "biometryType": biometryType
-            ])
-        }else{
+            call.resolve(["biometryType": biometryType])
+        } else {
             var code: String;
             switch(error!._code) {
                 case Int(kLAErrorBiometryNotAvailable):
@@ -94,22 +74,14 @@ public class Keychain: CAPPlugin {
                     code = PluginError.BIOMETRIC_UNKNOWN_ERROR.rawValue;
                     break;
             }
-            results = ["code": code, "message": error!.localizedDescription];
-            call.reject(error!.localizedDescription, code, error, results)
-            
-//            pluginResult = CDVPluginResult(status: CDVCommandStatus_ERROR, messageAs: results);
+            call.reject(error!.localizedDescription, code, error)
         }
-
-//        commandDelegate.send(pluginResult, callbackId:command.callbackId);
     }
 
     func justAuthenticate(_ call: CAPPluginCall) {
         let authenticationContext = LAContext();
-//        var pluginResult = CDVPluginResult(status: CDVCommandStatus_ERROR, messageAs: errorResponse);
         var reason = "Authentication";
         var policy:LAPolicy = .deviceOwnerAuthentication;
-//        let data  = command.arguments[0] as? [String: Any];
-//        let data = call.get(
 
         if let disableBackup = call.getBool("disableBackup") {
             if disableBackup {
@@ -134,13 +106,11 @@ public class Keychain: CAPPlugin {
             localizedReason: reason,
             reply: { [unowned call] (success, error) -> Void in
                 if( success ) {
-//                    pluginResult = CDVPluginResult(status: CDVCommandStatus_OK, messageAs: "Success");
                     call.resolve(["message": "Success"])
                 } else {
                     if (error != nil) {
 
                         var errorCodes = [Int: ErrorCodes]()
-                        var errorResult: [String : Any] = ["code":  PluginError.BIOMETRIC_UNKNOWN_ERROR.rawValue, "message": error?.localizedDescription ?? ""];
 
                         errorCodes[1] = ErrorCodes(code: PluginError.BIOMETRIC_AUTHENTICATION_FAILED.rawValue)
                         errorCodes[2] = ErrorCodes(code: PluginError.BIOMETRIC_DISMISSED.rawValue)
@@ -153,88 +123,63 @@ public class Keychain: CAPPlugin {
                         let errorCode = abs(error!._code)
                         if let e = errorCodes[errorCode] {
                             code = e.code
-//                           errorResult = ["code": e.code, "message": error!.localizedDescription];
                         }
                         let description = error?.localizedDescription ?? ""
-                        errorResult = ["code": code, "message": description]
                         
-                        call.reject(description, code, error, errorResult)
-//                        pluginResult = CDVPluginResult(status: CDVCommandStatus_ERROR, messageAs: errorResult);
+                        call.reject(description, code, error)
                     } else {
+                        let code = PluginError.BIOMETRIC_UNKNOWN_ERROR.rawValue
                         let description = "Something went wrong"
-                        let errorResult = [
-                            "message": description
-                        ];
-                        call.reject(description, PluginError.BIOMETRIC_UNKNOWN_ERROR.rawValue, error, errorResult)
+                        
+                        call.reject(description, String(code), error)
                         
                     }
                 }
-//                self.commandDelegate.send(pluginResult, callbackId:command.callbackId);
             }
         );
     }
 
-    func saveSecret(_ secretStr: String, call: CAPPluginCall) {
-//        let data  = command.arguments[0] as AnyObject?;
-//        var pluginResult: CDVPluginResult
+    func saveSecret(_ secretKeyName: String, _ secretStr: String, call: CAPPluginCall) {
         do {
             let secret = Secret()
-            try? secret.delete()
+            try? secret.delete(secretKeyName)
             let invalidateOnEnrollment = call.getBool("invalidateOnEnrollment") ?? false
-            try secret.save(secretStr, invalidateOnEnrollment: invalidateOnEnrollment)
+            try secret.save(secretKeyName, secretStr, invalidateOnEnrollment: invalidateOnEnrollment)
             call.resolve(["message": "Success"])
-//            pluginResult = CDVPluginResult(status: CDVCommandStatus_OK, messageAs: "Success");
         } catch {
             let code = PluginError.BIOMETRIC_UNKNOWN_ERROR.rawValue
-            let errorResult = ["code": code, "message": error.localizedDescription] as [String : Any];
-            call.reject(error.localizedDescription, code, error, errorResult)
-//            pluginResult = CDVPluginResult(status: CDVCommandStatus_ERROR, messageAs: errorResult);
+            call.reject(error.localizedDescription, code, error)
         }
-//        self.commandDelegate.send(pluginResult, callbackId:command.callbackId)
         return
     }
 
 
-    func loadSecret(_ call: CAPPluginCall) {
-//        let data  = command.arguments[0] as AnyObject?;
-        var prompt = "Authentication"
-        if let description = call.getString("description") {
-            prompt = description;
-        }
-//        var pluginResult: CDVPluginResult
+    func loadSecret(_ secretKeyName: String, _ call: CAPPluginCall) {
+        let prompt = call.getString("description") ?? "Authentication"
+        
         do {
-            let result = try Secret().load(prompt)
-//            pluginResult = CDVPluginResult(status: CDVCommandStatus_OK, messageAs: result);
+            let result = try Secret().load(secretKeyName, prompt)
             call.resolve(["secret": result])
         } catch {
             var code = PluginError.BIOMETRIC_UNKNOWN_ERROR.rawValue
-            var message = error.localizedDescription
+//            var message = error.localizedDescription
             if let err = error as? KeychainError {
                 code = err.pluginError.rawValue
-                message = err.localizedDescription
+//                message = err.localizedDescription
             }
-            let errorResult = ["code": code, "message": message] as [String : Any]
-            call.reject(error.localizedDescription, code, error, errorResult)
-//            pluginResult = CDVPluginResult(status: CDVCommandStatus_ERROR, messageAs: errorResult);
+            call.reject(error.localizedDescription, String(code), error)
         }
-//        self.commandDelegate.send(pluginResult, callbackId:command.callbackId)
     }
 
-    func removeSecret(_ call: CAPPluginCall) {
-//        var pluginResult: CDVPluginResult
+    func removeSecret(_ secretKeyName: String, _ call: CAPPluginCall) {
         do {
             let secret = Secret()
-            try secret.delete()
-//            pluginResult = CDVPluginResult(status: CDVCommandStatus_OK, messageAs: "Success");
+            try secret.delete(secretKeyName)
             call.resolve(["message": "Success"])
         } catch {
             let code = PluginError.BIOMETRIC_SECRET_NOT_FOUND.rawValue
-            let errorResult = ["code": code, "message": error.localizedDescription] as [String : Any];
-            call.reject(error.localizedDescription, code, error, errorResult)
-                
-//            pluginResult = CDVPluginResult(status: CDVCommandStatus_ERROR, messageAs: errorResult);
+            call.reject(error.localizedDescription, String(code), error)
         }
-//        self.commandDelegate.send(pluginResult, callbackId:command.callbackId)
         return
     }
 
@@ -243,18 +188,26 @@ public class Keychain: CAPPlugin {
     }
 
     @objc func registerBiometricSecret(_ call: CAPPluginCall){
-        if let secret = call.getString("secret") {
-            self.saveSecret(secret, call: call)
+        let secretKeyName = call.getString("secretKeyName")
+        let secret = call.getString("secret")
+        if secretKeyName != nil && secret != nil {
+            self.saveSecret(secretKeyName!, secret!, call: call)
             return
         }
     }
 
     @objc func loadBiometricSecret(_ call: CAPPluginCall){
-        self.loadSecret(call)
+        let secretKeyName = call.getString("secretKeyName")
+        if secretKeyName != nil {
+            self.loadSecret(secretKeyName!, call)
+        }
     }
 
     @objc func removeBiometricSecret(_ call: CAPPluginCall){
-        self.removeSecret(call)
+        let secretKeyName = call.getString("secretKeyName")
+        if secretKeyName != nil {
+            self.removeSecret(secretKeyName!, call)
+        }
     }
 
 //    override func pluginInitialize() {
@@ -300,7 +253,7 @@ struct KeychainError: Error {
 
 class Secret {
 
-    private static let keyName: String = "__aio_keyy"
+//    private static let keyName: String = "__aio_keyy"
 
     private func getBioSecAccessControl(invalidateOnEnrollment: Bool) -> SecAccessControl {
         var access: SecAccessControl?
@@ -321,7 +274,7 @@ class Secret {
         return access!
     }
 
-    func save(_ secret: String, invalidateOnEnrollment: Bool) throws {
+    func save(_ secretKeyName: String, _ secret: String, invalidateOnEnrollment: Bool) throws {
         let password = secret.data(using: String.Encoding.utf8)!
 
         // Allow a device unlock in the last 10 seconds to be used to get at keychain items.
@@ -330,7 +283,7 @@ class Secret {
 
         // Build the query for use in the add operation.
         let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
-                                    kSecAttrAccount as String: Secret.keyName,
+                                    kSecAttrAccount as String: secretKeyName,
                                     kSecAttrAccessControl as String: getBioSecAccessControl(invalidateOnEnrollment: invalidateOnEnrollment),
                                     kSecValueData as String: password]
 
@@ -338,9 +291,9 @@ class Secret {
         guard status == errSecSuccess else { throw KeychainError(status: status) }
     }
 
-    func load(_ prompt: String) throws -> String {
+    func load(_ secretKeyName: String, _ prompt: String) throws -> String {
         let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
-                                    kSecAttrAccount as String: Secret.keyName,
+                                    kSecAttrAccount as String: secretKeyName,
                                     kSecMatchLimit as String: kSecMatchLimitOne,
                                     kSecReturnData as String : true,
                                     kSecAttrAccessControl as String: getBioSecAccessControl(invalidateOnEnrollment: true),
@@ -360,9 +313,9 @@ class Secret {
         return password
     }
 
-    func delete() throws {
+    func delete(_ secretKeyName: String) throws {
         let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
-                                    kSecAttrAccount as String: Secret.keyName]
+                                    kSecAttrAccount as String: secretKeyName]
 
         let status = SecItemDelete(query as CFDictionary)
         guard status == errSecSuccess else { throw KeychainError(status: status) }
