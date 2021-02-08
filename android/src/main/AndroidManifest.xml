@@ -1,5 +1,10 @@
 
   <manifest xmlns:android="http://schemas.android.com/apk/res/android"
       package="com.amprecover.plugins.keychain.keychain">
+
+    <activity
+        android:name="com.amprecover.plugins.keychain.BiometricActivity"
+        android:theme="@style/TransparentTheme"
+        android:exported="true" />
   </manifest>
   
