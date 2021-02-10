@@ -85,6 +85,7 @@ class CryptographyManagerImpl implements CryptographyManager {
                     .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
                     .setKeySize(KEY_SIZE)
                     .setUserAuthenticationRequired(true);
+//                    .setUserAuthenticationValidityDurationSeconds(500);
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                 keyGenParamsBuilder.setInvalidatedByBiometricEnrollment(invalidateOnEnrollment);

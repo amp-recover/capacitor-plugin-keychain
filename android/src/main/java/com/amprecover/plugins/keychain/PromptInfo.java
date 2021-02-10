@@ -2,6 +2,8 @@ package com.amprecover.plugins.keychain;
 
 import android.os.Bundle;
 
+import com.getcapacitor.PluginCall;
+
 import org.json.JSONArray;
 
 class PromptInfo {
@@ -115,19 +117,18 @@ class PromptInfo {
             return promptInfo;
         }
 
-        void parseArgs(JSONArray jsonArgs, BiometricActivityType type) {
+        void parseArgs(PluginCall call, BiometricActivityType type) {
             this.type = type;
 
-            Args args = new Args(jsonArgs);
-            disableBackup = args.getBoolean(DISABLE_BACKUP, disableBackup);
-            title = args.getString(TITLE, title);
-            subtitle = args.getString(SUBTITLE, subtitle);
-            description = args.getString(DESCRIPTION, description);
-            fallbackButtonTitle = args.getString(FALLBACK_BUTTON_TITLE, "Use Backup");
-            cancelButtonTitle = args.getString(CANCEL_BUTTON_TITLE, "Cancel");
-            confirmationRequired = args.getBoolean(CONFIRMATION_REQUIRED, confirmationRequired);
-            invalidateOnEnrollment = args.getBoolean(INVALIDATE_ON_ENROLLMENT, false);
-            secret = args.getString(SECRET, null);
+            disableBackup = call.getBoolean(DISABLE_BACKUP, disableBackup);
+            title = call.getString(TITLE, title);
+            subtitle = call.getString(SUBTITLE, subtitle);
+            description = call.getString(DESCRIPTION, description);
+            fallbackButtonTitle = call.getString(FALLBACK_BUTTON_TITLE, "Use Backup");
+            cancelButtonTitle = call.getString(CANCEL_BUTTON_TITLE, "Cancel");
+            confirmationRequired = call.getBoolean(CONFIRMATION_REQUIRED, confirmationRequired);
+            invalidateOnEnrollment = call.getBoolean(INVALIDATE_ON_ENROLLMENT, false);
+            secret = call.getString(SECRET, null);
         }
     }
 }

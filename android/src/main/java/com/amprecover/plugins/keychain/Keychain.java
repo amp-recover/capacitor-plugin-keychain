@@ -1,15 +1,17 @@
 package com.amprecover.plugins.keychain;
 
+import android.Manifest;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
-import android.hardware.biometrics.BiometricManager;
+//import android.hardware.biometrics.BiometricManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 
+import androidx.biometric.BiometricManager;
 import androidx.biometric.BiometricPrompt;
 
 import com.getcapacitor.JSObject;
@@ -17,13 +19,23 @@ import com.getcapacitor.NativePlugin;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
+import com.getcapacitor.PluginResult;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import static androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG;
+import static androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_WEAK;
+import static androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL;
+
 @NativePlugin(
-    requestCodes={Keychain.REQUEST_CODE_BIOMETRIC} // register request code(s) for intent results
+    requestCodes={Keychain.REQUEST_CODE_BIOMETRIC}, // register request code(s) for intent results
+
+    permissions={
+        Manifest.permission.USE_BIOMETRIC,
+        Manifest.permission.USE_FINGERPRINT
+    }
 )
 public class Keychain extends Plugin {
 //    protected static final int REQUEST_KEYCHAIN_VALUE = 4252226; // Unique request code
@@ -65,98 +77,133 @@ public class Keychain extends Plugin {
     }
 
     @PluginMethod
-    public void isAvailable() {
+    public void isAvailable(PluginCall call) {
         PluginError error = canAuthenticate();
+        JSObject ret = new JSObject();
         if (error != null) {
-            sendError(error);
+            call.reject(error.name());
+            return;
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P){
-            sendSuccess("biometric");
+            ret.put("biometryType", "biometric");
         } else {
-            sendSuccess("finger");
+            ret.put("biometryType", "finger");
         }
+        call.resolve(ret);
     }
 
     @PluginMethod
     public void registerBiometricSecret(PluginCall call) {
-        // should at least contains the secret
+        // should at least contain the secret
         if (call.getString("secret") == null) {
-            sendError(PluginError.BIOMETRIC_ARGS_PARSING_FAILED);
+            call.reject(PluginError.BIOMETRIC_ARGS_PARSING_FAILED.name());
             return;
         }
         this.runBiometricActivity(call, BiometricActivityType.REGISTER_SECRET);
     }
-
-    @PluginMethod
-    public void loadBiometricSecret(PluginCall call) {
-        this.runBiometricActivity(call, BiometricActivityType.LOAD_SECRET);
-//        saveCall(call);
 //
-//        Intent intent = new Intent(Intent.ACTION_PICK);
-//        intent.setType("image/*");
+//    @PluginMethod
+//    public void loadBiometricSecret(PluginCall call) {
+//        this.runBiometricActivity(call, BiometricActivityType.LOAD_SECRET);
+////        saveCall(call);
+////
+////        Intent intent = new Intent(Intent.ACTION_PICK);
+////        intent.setType("image/*");
+////
+////        startActivityForResult(call, intent, REQUEST_IMAGE_PICK);
+//    }
 //
-//        startActivityForResult(call, intent, REQUEST_IMAGE_PICK);
-    }
-
-    @PluginMethod
-    private void removeBiometricSecret(PluginCall call) {
-        this.runBiometricActivity(call, BiometricActivityType.REMOVE_SECRET);
-    }
-
-    @PluginMethod
-    public void authenticate(PluginCall call) {
-        this.runBiometricActivity(call, BiometricActivityType.JUST_AUTHENTICATE);
-    }
-
+//    @PluginMethod
+//    private void removeBiometricSecret(PluginCall call) {
+//        this.runBiometricActivity(call, BiometricActivityType.REMOVE_SECRET);
+//    }
+//
+//    @PluginMethod
+//    public void authenticate(PluginCall call) {
+//        this.runBiometricActivity(call, BiometricActivityType.JUST_AUTHENTICATE);
+//    }
+//
     private void runBiometricActivity(PluginCall call, BiometricActivityType type) {
         PluginError error = canAuthenticate();
         if (error != null) {
-            sendError(error);
+            call.reject(error.name());
             return;
         }
-        getActivity().runOnUiThread(() -> {
-            mPromptInfoBuilder.parseArgs(args, type);
-            Intent intent = new Intent(this.getActivity().getApplicationContext(), BiometricActivity.class);
+        saveCall(call);
+
+//        getActivity().runOnUiThread(() -> {
+            mPromptInfoBuilder.parseArgs(call, type);
+//            Intent intent = new Intent(getActivity().getApplicationContext(), BiometricActivity.class);
+//            Intent intent = new Intent(getContext(), BiometricActivity.class);
+            Intent intent = new Intent(getActivity(), BiometricActivity.class);
+//            Intent intent = new Intent(getActivity(), BiometricActivity.class);
             intent.putExtras(mPromptInfoBuilder.build().getBundle());
             startActivityForResult(call, intent, REQUEST_CODE_BIOMETRIC);
-        });
-        PluginResult pluginResult = new PluginResult(PluginResult.Status.NO_RESULT);
-        pluginResult.setKeepCallback(true);
-        this.mCallbackContext.sendPluginResult(pluginResult);
+//        });
+//        JSObject ret = new JSObject();
+//        ret.put("biometryType", "biometric");
+//        call.resolve(ret);
+
+//        PluginResult pluginResult = new PluginResult(PluginResult.Status.NO_RESULT);
+//        pluginResult.setKeepCallback(true);
+//        this.mCallbackContext.sendPluginResult(pluginResult);
     }
 
+    // in order to handle the intents result, you have to @Override handleOnActivityResult
     @Override
-    public void onActivityResult(int requestCode, int resultCode, Intent intent) {
-        super.onActivityResult(requestCode, resultCode, intent);
-        if (requestCode != REQUEST_CODE_BIOMETRIC) {
+    protected void handleOnActivityResult(int requestCode, int resultCode, Intent data) {
+        super.handleOnActivityResult(requestCode, resultCode, data);
+
+        // Get the previously saved call
+        PluginCall savedCall = getSavedCall();
+
+        if (savedCall == null) {
             return;
         }
-        if (resultCode != Activity.RESULT_OK) {
-            sendError(intent);
-            return;
-        }
-        sendSuccess(intent);
-    }
-
-    private void sendSuccess(Intent intent) {
-        if (intent != null && intent.getExtras() != null) {
-            sendSuccess(intent.getExtras().getString(PromptInfo.SECRET_EXTRA));
-        } else {
-            sendSuccess("biometric_success");
+        if (requestCode == REQUEST_CODE_BIOMETRIC) {
+            if (resultCode != Activity.RESULT_OK) {
+                sendError(savedCall, data);
+                return;
+            }
         }
     }
-
-    private void sendError(Intent intent) {
+//
+////    @Override
+////    public void onActivityResult(int requestCode, int resultCode, Intent intent) {
+////        super.onActivityResult(requestCode, resultCode, intent);
+////        if (requestCode != REQUEST_CODE_BIOMETRIC) {
+////            return;
+////        }
+////        if (resultCode != Activity.RESULT_OK) {
+////            sendError(intent);
+////            return;
+////        }
+////        sendSuccess(intent);
+////    }
+//
+//    private void sendSuccess(Intent intent) {
+//        if (intent != null && intent.getExtras() != null) {
+//            sendSuccess(intent.getExtras().getString(PromptInfo.SECRET_EXTRA));
+//        } else {
+//            sendSuccess("biometric_success");
+//        }
+//    }
+//
+    private void sendError(PluginCall call, Intent intent) {
         if (intent != null) {
             Bundle extras = intent.getExtras();
-            sendError(extras.getInt("code"), extras.getString("message"));
+            sendError(call, extras.getInt("code"), extras.getString("message"));
         } else {
-            sendError(PluginError.BIOMETRIC_DISMISSED);
+            sendError(call, PluginError.BIOMETRIC_DISMISSED);
         }
     }
 
     private PluginError canAuthenticate() {
 
-        int error = BiometricManager.from(cordova.getContext()).canAuthenticate();
+        // NOTE: "Developers that wish to check for the presence of a PIN, pattern,
+        // or password on these versions should instead use KeyguardManager.isDeviceSecure()."
+        int error = BiometricManager.from(getContext()).canAuthenticate(
+                BIOMETRIC_STRONG | DEVICE_CREDENTIAL | BIOMETRIC_WEAK
+        );
         switch (error) {
             case BiometricManager.BIOMETRIC_ERROR_HW_UNAVAILABLE:
             case BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE:
@@ -169,31 +216,36 @@ public class Keychain extends Plugin {
         }
     }
 
-    private void sendError(int code, String message) {
-        JSONObject resultJson = new JSONObject();
-        try {
-            resultJson.put("code", code);
-            resultJson.put("message", message);
+    private void sendError(PluginCall call, int code, String message) {
+        JSObject resultJson = new JSObject();
+        resultJson.put("code", code);
+        resultJson.put("message", message);
+        call.reject(message, String.valueOf(code));
 
-            PluginResult result = new PluginResult(PluginResult.Status.ERROR, resultJson);
-            result.setKeepCallback(true);
-            cordova.getActivity().runOnUiThread(() ->
-                    Fingerprint.this.mCallbackContext.sendPluginResult(result));
-        } catch (JSONException e) {
-            Log.e(TAG, e.getMessage(), e);
-        }
+
+//        try {
+//            resultJson.put("code", code);
+//            resultJson.put("message", message);
+//
+//            PluginResult result = new PluginResult(PluginResult.Status.ERROR, resultJson);
+//            result.setKeepCallback(true);
+//            cordova.getActivity().runOnUiThread(() ->
+//                    Fingerprint.this.mCallbackContext.sendPluginResult(result));
+//        } catch (JSONException e) {
+//            Log.e(TAG, e.getMessage(), e);
+//        }
     }
 
-    private void sendError(PluginError error) {
-        sendError(error.getValue(), error.getMessage());
+    private void sendError(PluginCall call, PluginError error) {
+        sendError(call, error.getValue(), error.getMessage());
     }
-
-    private void sendSuccess(String message) {
-        Log.e(TAG, message);
-        cordova.getActivity().runOnUiThread(() ->
-                this.mCallbackContext.success(message));
-    }
-
+//
+//    private void sendSuccess(String message) {
+//        Log.e(TAG, message);
+//        cordova.getActivity().runOnUiThread(() ->
+//                this.mCallbackContext.success(message));
+//    }
+//
     private String getApplicationLabel(Context context) {
         try {
             PackageManager packageManager = context.getPackageManager();
