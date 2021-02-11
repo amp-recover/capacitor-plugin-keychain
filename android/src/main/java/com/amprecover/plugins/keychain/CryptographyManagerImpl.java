@@ -10,6 +10,7 @@ import androidx.annotation.RequiresApi;
 
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
+import java.security.InvalidKeyException;
 import java.security.KeyStore;
 import java.security.NoSuchAlgorithmException;
 import java.util.Calendar;
@@ -48,6 +49,7 @@ class CryptographyManagerImpl implements CryptographyManager {
         Calendar end = Calendar.getInstance();
         end.add(Calendar.YEAR, 1);
         try {
+            System.out.println("getOrCreateSecretKeyOld keyName: " + keyName);
             KeyPairGeneratorSpec keySpec = new KeyPairGeneratorSpec.Builder(context)
                     .setAlias(keyName)
                     .setSubject(new X500Principal("CN=FINGERPRINT_AIO ," +
@@ -68,6 +70,7 @@ class CryptographyManagerImpl implements CryptographyManager {
     @RequiresApi(api = Build.VERSION_CODES.M)
     private SecretKey getOrCreateSecretKeyNew(String keyName, boolean invalidateOnEnrollment) throws CryptoException {
         try {
+            System.out.println("getOrCreateSecretKeyNew keyName: " + keyName);
             // If Secretkey was previously created for that keyName, then grab and return it.
             KeyStore keyStore = KeyStore.getInstance(ANDROID_KEYSTORE);
             keyStore.load(null); // Keystore must be loaded before it can be accessed
@@ -106,12 +109,23 @@ class CryptographyManagerImpl implements CryptographyManager {
         try {
             Cipher cipher = getCipher();
             SecretKey secretKey = getOrCreateSecretKey(keyName, invalidateOnEnrollment, context);
+            System.out.println("getInitializedCipherForEncryption secretKey: " + secretKey);
             cipher.init(Cipher.ENCRYPT_MODE, secretKey);
+            System.out.println("getInitializedCipherForEncryption cipher initialized!");
             return cipher;
-        } catch (Exception e) {
+//        } catch (Exception e) {
+        } catch (NoSuchPaddingException e) {
+            System.out.println("NoSuchPaddingException " + e);
+            throw new CryptoException(e.getMessage(), e);
+        } catch (NoSuchAlgorithmException e) {
+            System.out.println("NoSuchAlgorithmException " + e);
+            throw new CryptoException(e.getMessage(), e);
+        } catch (InvalidKeyException e) {
+            System.out.println("Exception: " + e);
             try {
                 handleException(e, keyName);
             } catch (KeyInvalidatedException kie) {
+                System.out.println("getInitializedCipherForEncryption got KeyInvalidatedException");
                 return getInitializedCipherForEncryption(keyName, invalidateOnEnrollment, context);
             }
             throw new CryptoException(e.getMessage(), e);
@@ -121,6 +135,7 @@ class CryptographyManagerImpl implements CryptographyManager {
     private void handleException(Exception e, String keyName) throws CryptoException {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
                 && e instanceof KeyPermanentlyInvalidatedException) {
+            System.out.println("removing key due to exception!");
             removeKey(keyName);
             throw new KeyInvalidatedException();
         }

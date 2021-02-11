@@ -1,12 +1,12 @@
-
-  <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-      package="com.amprecover.plugins.keychain.keychain">
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.amprecover.plugins.keychain.keychain">
 
     <application>
-      <activity
-          android:name="com.amprecover.plugins.keychain.BiometricActivity"
-          android:theme="@style/TransparentTheme"
-          android:exported="true" />
+        <activity
+            android:name="com.amprecover.plugins.keychain.BiometricActivity"
+            android:exported="true"
+            android:theme="@style/TransparentTheme" />
     </application>
-  </manifest>
-  
+
+</manifest>

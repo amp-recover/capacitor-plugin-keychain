@@ -13,6 +13,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.biometric.BiometricPrompt;
 import androidx.core.content.ContextCompat;
 
+import com.amprecover.plugins.keychain.keychain.R;
+
 import java.util.concurrent.Executor;
 
 import javax.crypto.Cipher;
@@ -29,9 +31,10 @@ public class BiometricActivity extends AppCompatActivity {
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setTitle(null);
-        int layout = getResources()
-                .getIdentifier("biometric_activity", "layout", getPackageName());
-        setContentView(layout);
+//        int layout = getResources()
+//                .getIdentifier("biometric_activity", "layout", getPackageName());
+//        setContentView(layout);
+        setContentView(R.layout.biometric_activity);
 
         if (savedInstanceState != null) {
             return;
@@ -52,6 +55,7 @@ public class BiometricActivity extends AppCompatActivity {
     }
 
     private void authenticate() throws CryptoException {
+        System.out.println("Called: Authenticate " + mPromptInfo.getType());
         switch (mPromptInfo.getType()) {
           case JUST_AUTHENTICATE:
             justAuthenticate();
@@ -73,9 +77,12 @@ public class BiometricActivity extends AppCompatActivity {
         if (mPromptInfo.getSecret() == null) {
             throw new CryptoException(PluginError.BIOMETRIC_ARGS_PARSING_FAILED);
         }
+        System.out.println("authenticateToEncrypt secret: " + mPromptInfo.getSecret());
         Cipher cipher = mCryptographyManager
                 .getInitializedCipherForEncryption(SECRET_KEY, invalidateOnEnrollment, this);
+        System.out.println("authenticateToEncrypt cipher: " + cipher);
         mBiometricPrompt.authenticate(createPromptInfo(), new BiometricPrompt.CryptoObject(cipher));
+        System.out.println("authenticateToEncrypt completed");
     }
 
     private void justAuthenticate() {
@@ -155,18 +162,18 @@ public class BiometricActivity extends AppCompatActivity {
         }
     }
 
-//    // TODO: remove after fix https://issuetracker.google.com/issues/142740104
-//    @Override
-//    public void onActivityResult(int requestCode, int resultCode, Intent data) {
-////        super.onActivityResult(requestCode, resultCode, data);
-//        if (requestCode == REQUEST_CODE_CONFIRM_DEVICE_CREDENTIALS) {
-//            if (resultCode == Activity.RESULT_OK) {
-//                finishWithSuccess();
-//            } else {
-//                finishWithError(PluginError.BIOMETRIC_PIN_OR_PATTERN_DISMISSED);
-//            }
-//        }
-//    }
+    // TODO: remove after fix https://issuetracker.google.com/issues/142740104
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+//        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_CODE_CONFIRM_DEVICE_CREDENTIALS) {
+            if (resultCode == Activity.RESULT_OK) {
+                finishWithSuccess();
+            } else {
+                finishWithError(PluginError.BIOMETRIC_PIN_OR_PATTERN_DISMISSED);
+            }
+        }
+    }
 
     private void onError(int errorCode, @NonNull CharSequence errString) {
 
@@ -209,9 +216,9 @@ public class BiometricActivity extends AppCompatActivity {
           case LOAD_SECRET:
             intent = getDecryptedIntent(cryptoObject);
             break;
-        case REMOVE_SECRET:
-            removeKey();
-            break;
+//          case REMOVE_SECRET:
+//            removeKey();
+//            break;
         }
         if (intent == null) {
             setResult(RESULT_OK);
@@ -241,6 +248,7 @@ public class BiometricActivity extends AppCompatActivity {
     private void removeKey() throws CryptoException {
 //        mCryptographyManager.encryptData(SECRET_KEY);
         // TODO: finish removeKey functionality
+        mCryptographyManager.removeKey(SECRET_KEY);
     }
 
     private void finishWithError(CryptoException e) {
