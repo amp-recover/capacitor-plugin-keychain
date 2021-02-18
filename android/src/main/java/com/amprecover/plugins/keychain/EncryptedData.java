@@ -26,12 +26,21 @@ class EncryptedData {
         return load(CIPHERTEXT_KEY_NAME, context);
     }
 
+    static void delete(Context context) throws CryptoException {
+        remove(IV_KEY_NAME, context);
+        remove(CIPHERTEXT_KEY_NAME, context);
+    }
+
     void save(Context context) {
         save(IV_KEY_NAME, initializationVector, context);
         save(CIPHERTEXT_KEY_NAME, ciphertext, context);
     }
 
     private void save(String key, byte[] value, Context context) {
+        System.out.println("Saving: " + key + " : " + value);
+        if (key == null || value == null) {
+            return;
+        }
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
         preferences.edit()
                 .putString(key, Base64.encodeToString(value, Base64.DEFAULT))
@@ -43,5 +52,12 @@ class EncryptedData {
         String res = preferences.getString(key, null);
         if (res == null) throw new CryptoException(PluginError.BIOMETRIC_NO_SECRET_FOUND);
         return Base64.decode(res, Base64.DEFAULT);
+    }
+
+    private static void remove(String key, Context context) throws CryptoException {
+        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
+        preferences.edit()
+                .remove(key)
+                .apply();
     }
 }

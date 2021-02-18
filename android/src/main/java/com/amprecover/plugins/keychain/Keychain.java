@@ -102,17 +102,13 @@ public class Keychain extends Plugin {
 
     @PluginMethod
     public void removeBiometricSecret(PluginCall call) {
-//        this.runBiometricActivity(call, BiometricActivityType.REMOVE_SECRET);
-        CryptographyManager mCryptographyManager = new CryptographyManagerImpl();
         try {
-            mCryptographyManager.removeKey("key");
-            JSObject jsonResponse = new JSObject();
-            jsonResponse.put("message", "Success");
-            call.resolve(jsonResponse);
+            EncryptedData.delete(getActivity());
         } catch (CryptoException e) {
-            Log.e(TAG, e.getMessage(), e);
-            sendError(call, PluginError.BIOMETRIC_UNKNOWN_ERROR.getValue(), e.getLocalizedMessage());
+            sendError(call, e.getError());
+            return;
         }
+        sendSuccess(call, "Secret was removed successfully.");
     }
 //
 //    @PluginMethod
@@ -123,6 +119,10 @@ public class Keychain extends Plugin {
     private void runBiometricActivity(PluginCall call, BiometricActivityType type) {
         PluginError error = canAuthenticate();
         if (error != null) {
+            if (error == PluginError.BIOMETRIC_HARDWARE_NOT_SUPPORTED || error == PluginError.BIOMETRIC_NOT_ENROLLED) {
+                // Don't attempt biometric auth... instead,
+            }
+
             call.reject(error.name());
             return;
         }
@@ -131,6 +131,10 @@ public class Keychain extends Plugin {
         PromptInfo.Builder mPromptInfoBuilder = new PromptInfo.Builder(
                 this.getApplicationLabel(getActivity())
         );
+//        // Can't call setNegativeButtonText() and
+//        // setAllowedAuthenticators(...|DEVICE_CREDENTIAL) at the same time.
+//        // .setNegativeButtonText("Use account password")
+//        .setAllowedAuthenticators(BIOMETRIC_STRONG | DEVICE_CREDENTIAL);
 
 ////        getActivity().runOnUiThread(() -> {
         mPromptInfoBuilder.parseArgs(call, type);
@@ -215,12 +219,20 @@ public class Keychain extends Plugin {
     }
 
     private PluginError canAuthenticate() {
+        int authenticationModes = BIOMETRIC_STRONG | DEVICE_CREDENTIAL;
+
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+            authenticationModes = BIOMETRIC_STRONG | DEVICE_CREDENTIAL;
+        } else if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
+            // ????
+        } else if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+            // ????
+        }
 
         // NOTE: "Developers that wish to check for the presence of a PIN, pattern,
         // or password on these versions should instead use KeyguardManager.isDeviceSecure()."
-        int error = BiometricManager.from(getContext()).canAuthenticate(
-                BIOMETRIC_STRONG | DEVICE_CREDENTIAL | BIOMETRIC_WEAK
-        );
+        int error = BiometricManager.from(getContext()).canAuthenticate(authenticationModes);
+
         switch (error) {
             case BiometricManager.BIOMETRIC_ERROR_HW_UNAVAILABLE:
             case BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE:
@@ -237,7 +249,8 @@ public class Keychain extends Plugin {
 //        JSObject resultJson = new JSObject();
 //        resultJson.put("code", code);
 //        resultJson.put("message", message);
-        call.reject(message, String.valueOf(code));
+//        call.reject(message, String.valueOf(code));
+        call.reject(message, message);
 
 
 //        try {
