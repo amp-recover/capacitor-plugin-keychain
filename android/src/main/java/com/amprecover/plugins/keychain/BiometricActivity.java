@@ -10,6 +10,7 @@ import android.os.Looper;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.biometric.BiometricManager;
 import androidx.biometric.BiometricPrompt;
 import androidx.core.content.ContextCompat;
 
@@ -111,9 +112,14 @@ public class BiometricActivity extends AppCompatActivity {
             mBiometricPrompt.authenticate(createPromptInfo());
 //            showAuthenticationScreen();
         } else {
-            Cipher cipher = mCryptographyManager
-                    .getInitializedCipherForEncryption(SECRET_KEY, invalidateOnEnrollment, this);
-            mBiometricPrompt.authenticate(createPromptInfo(), new BiometricPrompt.CryptoObject(cipher));
+            int strongEnabled = BiometricManager.from(this).canAuthenticate(BIOMETRIC_STRONG);
+            if (strongEnabled == BiometricManager.BIOMETRIC_SUCCESS) {
+                Cipher cipher = mCryptographyManager
+                        .getInitializedCipherForEncryption(SECRET_KEY, invalidateOnEnrollment, this);
+                mBiometricPrompt.authenticate(createPromptInfo(), new BiometricPrompt.CryptoObject(cipher));
+            } else {
+                mBiometricPrompt.authenticate(createPromptInfo());
+            }
         }
     }
 
@@ -127,10 +133,15 @@ public class BiometricActivity extends AppCompatActivity {
             mBiometricPrompt.authenticate(createPromptInfo());
 //            showAuthenticationScreen();
         } else {
-            byte[] initializationVector = EncryptedData.loadInitializationVector(this);
-            Cipher cipher = mCryptographyManager
-                    .getInitializedCipherForDecryption(SECRET_KEY, initializationVector, this);
-            mBiometricPrompt.authenticate(createPromptInfo(), new BiometricPrompt.CryptoObject(cipher));
+            int strongEnabled = BiometricManager.from(this).canAuthenticate(BIOMETRIC_STRONG);
+            if (strongEnabled == BiometricManager.BIOMETRIC_SUCCESS) {
+                byte[] initializationVector = EncryptedData.loadInitializationVector(this);
+                Cipher cipher = mCryptographyManager
+                        .getInitializedCipherForDecryption(SECRET_KEY, initializationVector, this);
+                mBiometricPrompt.authenticate(createPromptInfo(), new BiometricPrompt.CryptoObject(cipher));
+            } else {
+                mBiometricPrompt.authenticate(createPromptInfo());
+            }
         }
     }
 
@@ -160,11 +171,20 @@ public class BiometricActivity extends AppCompatActivity {
         // Crypto-based authentication is not supported for device credential prior to API 30. (API 21)
         // This device does not have a fingerprint sensor (API 21)
 
-
+        // TODO: respect mPromptInfo.isDeviceCredentialAllowed()
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-            promptInfoBuilder.setAllowedAuthenticators(BIOMETRIC_STRONG | DEVICE_CREDENTIAL);
+            promptInfoBuilder.setAllowedAuthenticators(BIOMETRIC_STRONG | DEVICE_CREDENTIAL); // "Authenticator combination is unsupported on API 21: DEVICE_CREDENTIAL"
         } else if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
-            // ????
+            if (BiometricManager.from(this).canAuthenticate(BIOMETRIC_STRONG) == BiometricManager.BIOMETRIC_SUCCESS
+                    && mPromptInfo.isDeviceCredentialAllowed()) {
+                System.out.println("canAuthenticate(BIOMETRIC_STRONG)!");
+                promptInfoBuilder.setAllowedAuthenticators(BIOMETRIC_STRONG);
+                promptInfoBuilder.setNegativeButtonText(mPromptInfo.getCancelButtonTitle());
+            } else {
+                System.out.println("canAuthenticate(BIOMETRIC_STRONG) == false :(");
+                // Crypto-based authentication is not supported for device credential prior to API 30.
+                promptInfoBuilder.setAllowedAuthenticators(DEVICE_CREDENTIAL);
+            }
         } else if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
             // ????
         }
@@ -209,7 +229,7 @@ public class BiometricActivity extends AppCompatActivity {
                 public void onAuthenticationFailed() {
                     super.onAuthenticationFailed();
                     System.out.println("onAuthenticationFailed");
-                    onError(PluginError.BIOMETRIC_AUTHENTICATION_FAILED.getValue(), PluginError.BIOMETRIC_AUTHENTICATION_FAILED.getMessage());
+                    onFailure();
                 }
             };
 
@@ -250,27 +270,52 @@ public class BiometricActivity extends AppCompatActivity {
         }
     }
 
+    private void onFailure() {
+        if (BiometricManager.from(this).canAuthenticate(BIOMETRIC_STRONG) == BiometricManager.BIOMETRIC_SUCCESS
+                && mPromptInfo.isDeviceCredentialAllowed()
+                && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
+                && Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
+            showAuthenticationScreen();
+        } else {
+            finishWithError(PluginError.BIOMETRIC_AUTHENTICATION_FAILED);
+        }
+    }
+
     private void onError(int errorCode, @NonNull CharSequence errString) {
 
         switch (errorCode)
         {
             case BiometricPrompt.ERROR_USER_CANCELED:
             case BiometricPrompt.ERROR_CANCELED:
+
+                if (BiometricManager.from(this).canAuthenticate(BIOMETRIC_STRONG) == BiometricManager.BIOMETRIC_SUCCESS
+                        && mPromptInfo.isDeviceCredentialAllowed()
+                        && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
+                        && Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
+                    return;
+                }
                 finishWithError(PluginError.BIOMETRIC_DISMISSED);
                 return;
             case BiometricPrompt.ERROR_NEGATIVE_BUTTON:
                 // TODO: remove after fix https://issuetracker.google.com/issues/142740104
-                if (Build.VERSION.SDK_INT > Build.VERSION_CODES.P && mPromptInfo.isDeviceCredentialAllowed()) {
+//                if (Build.VERSION.SDK_INT > Build.VERSION_CODES.P && mPromptInfo.isDeviceCredentialAllowed()) {
+//                if (mPromptInfo.isDeviceCredentialAllowed()) {
+                if (BiometricManager.from(this).canAuthenticate(BIOMETRIC_STRONG) == BiometricManager.BIOMETRIC_SUCCESS
+                        && mPromptInfo.isDeviceCredentialAllowed()
+                        && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
+                        && Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
                     showAuthenticationScreen();
                     return;
                 }
                 finishWithError(PluginError.BIOMETRIC_DISMISSED);
                 break;
             case BiometricPrompt.ERROR_LOCKOUT:
-                finishWithError(PluginError.BIOMETRIC_LOCKED_OUT.getValue(), errString.toString());
+                finishWithError(PluginError.BIOMETRIC_LOCKED_OUT);
+//                finishWithError(PluginError.BIOMETRIC_LOCKED_OUT.getValue(), errString.toString());
                 break;
             case BiometricPrompt.ERROR_LOCKOUT_PERMANENT:
-                finishWithError(PluginError.BIOMETRIC_LOCKED_OUT_PERMANENT.getValue(), errString.toString());
+                finishWithError(PluginError.BIOMETRIC_LOCKED_OUT_PERMANENT);
+//                finishWithError(PluginError.BIOMETRIC_LOCKED_OUT_PERMANENT.getValue(), errString.toString());
                 break;
             default:
                 finishWithError(errorCode, errString.toString());
@@ -306,12 +351,12 @@ public class BiometricActivity extends AppCompatActivity {
     private void encrypt(BiometricPrompt.CryptoObject cryptoObject) throws CryptoException { //, IOException, CertificateException, NoSuchAlgorithmException, InvalidKeyException, UnrecoverableEntryException, InvalidAlgorithmParameterException, NoSuchPaddingException, NoSuchProviderException, BadPaddingException, KeyStoreException, IllegalBlockSizeException {
         String text = mPromptInfo.getSecret();
         Cipher cipher = null;
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+        if (cryptoObject != null && cryptoObject.getCipher() != null) {
+            cipher = cryptoObject.getCipher();
+        } else {
+//        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M && strongEnabled....) {
             cipher = mCryptographyManager
                     .getInitializedCipherForEncryption(SECRET_KEY, false, this);
-        } else {
-//        if (cryptoObject != null && cryptoObject.getCipher() != null) {
-            cipher = cryptoObject.getCipher();
         }
         EncryptedData encryptedData = mCryptographyManager.encryptData(text, cipher);
         encryptedData.save(this);
@@ -321,13 +366,13 @@ public class BiometricActivity extends AppCompatActivity {
         byte[] ciphertext = EncryptedData.loadCiphertext(this);
 
         Cipher cipher = null;
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+        if (cryptoObject != null && cryptoObject.getCipher() != null) {
+            cipher = cryptoObject.getCipher();
+        } else {
+//        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M && strongEnabled....) {
             byte[] initializationVector = null; //EncryptedData.loadInitializationVector(this);
             cipher = mCryptographyManager
                     .getInitializedCipherForDecryption(SECRET_KEY, initializationVector, this);
-        } else {
-//        if (cryptoObject != null && cryptoObject.getCipher() != null) {
-            cipher = cryptoObject.getCipher();
         }
 
         String secret = mCryptographyManager.decryptData(ciphertext, cipher);

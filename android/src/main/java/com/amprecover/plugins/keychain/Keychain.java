@@ -209,15 +209,6 @@ public class Keychain extends Plugin {
         }
     }
 
-    private void sendError(PluginCall call, Intent intent) {
-        if (intent != null) {
-            Bundle extras = intent.getExtras();
-            sendError(call, extras.getInt("code"), extras.getString("message"));
-        } else {
-            sendError(call, PluginError.BIOMETRIC_DISMISSED);
-        }
-    }
-
     private PluginError canAuthenticate() {
         int authenticationModes = BIOMETRIC_STRONG | DEVICE_CREDENTIAL;
 
@@ -243,12 +234,49 @@ public class Keychain extends Plugin {
             default:
                 return null;
         }
+
+//        if (!fingerprintManager.isHardwareDetected()) {
+//            msg.setText("Your device doesn't support fingerprint authentication");
+//        }
+//        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.USE_FINGERPRINT) != PackageManager.PERMISSION_GRANTED) {
+//            msg.setText("Please enable the fingerprint permission");
+//        }
+//        if (!fingerprintManager.hasEnrolledFingerprints()) {
+//            msg.setText("No fingerprint configured. Please register at least one fingerprint in your device's Settings");
+//        }
+//
+//        if (!keyguardManager.isKeyguardSecure()) {
+//            msg.setText("Please enable lockscreen security in your device's Settings");
+//        } else {
+//            try {
+//                generateKey();
+//            } catch (FingerprintException e) {
+//                e.printStackTrace();
+//            }
+//
+//            if (initCipher()) {
+//                cryptoObject = new FingerprintManager.CryptoObject(cipher);
+//                helper = new FingerprintHandler(this);
+//                helper.startAuth(fingerprintManager, cryptoObject);
+//            }
+//        }
+
+    }
+
+    private void sendError(PluginCall call, Intent intent) {
+        if (intent != null) {
+            Bundle extras = intent.getExtras();
+            sendError(call, extras.getInt("code"), extras.getString("message"));
+        } else {
+            sendError(call, PluginError.BIOMETRIC_DISMISSED);
+        }
+    }
+
+    private void sendError(PluginCall call, PluginError error) {
+        sendError(call, error.getValue(), error.getMessage());
     }
 
     private void sendError(PluginCall call, int code, String message) {
-//        JSObject resultJson = new JSObject();
-//        resultJson.put("code", code);
-//        resultJson.put("message", message);
 //        call.reject(message, String.valueOf(code));
         call.reject(message, message);
 
@@ -264,10 +292,6 @@ public class Keychain extends Plugin {
 //        } catch (JSONException e) {
 //            Log.e(TAG, e.getMessage(), e);
 //        }
-    }
-
-    private void sendError(PluginCall call, PluginError error) {
-        sendError(call, error.getValue(), error.getMessage());
     }
 
     private void sendSuccess(PluginCall call, String message) {
