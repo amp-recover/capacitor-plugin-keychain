@@ -113,9 +113,9 @@ public class BiometricActivity extends AppCompatActivity {
 ////            showAuthenticationScreen();
             skipAuthentication();
 //        } else if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P){
-        } else if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q){
-            int strongEnabled = BiometricManager.from(this).canAuthenticate(BIOMETRIC_STRONG);
-            if (strongEnabled == BiometricManager.BIOMETRIC_SUCCESS) {
+//        } else if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q){
+        } else if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R){
+            if (BiometricManager.from(this).canAuthenticate(BIOMETRIC_STRONG) == BiometricManager.BIOMETRIC_SUCCESS) {
                 Cipher cipher = mCryptographyManager
                         .getInitializedCipherForEncryption(SECRET_KEY, invalidateOnEnrollment, this);
                 mBiometricPrompt.authenticate(createPromptInfo(), new BiometricPrompt.CryptoObject(cipher));
@@ -123,6 +123,17 @@ public class BiometricActivity extends AppCompatActivity {
 //                mBiometricPrompt.authenticate(createPromptInfo());
                 skipAuthentication();
             }
+//        } else if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R){
+////            if (BiometricManager.from(this).canAuthenticate(BIOMETRIC_STRONG) == BiometricManager.BIOMETRIC_SUCCESS) {
+////                Cipher cipher = mCryptographyManager
+////                        .getInitializedCipherForEncryption(SECRET_KEY, invalidateOnEnrollment, this);
+////                mBiometricPrompt.authenticate(createPromptInfo(), new BiometricPrompt.CryptoObject(cipher));
+////            } else {
+//////                mBiometricPrompt.authenticate(createPromptInfo());
+////                skipAuthentication();
+////            }
+//            // Auth screen on api29 looks like the biometric screen... and so people have to click through both to get to backup creds :(
+//            showAuthenticationScreen();
         } else {
             Cipher cipher = mCryptographyManager
                     .getInitializedCipherForEncryption(SECRET_KEY, invalidateOnEnrollment, this);
@@ -149,15 +160,29 @@ public class BiometricActivity extends AppCompatActivity {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
             mBiometricPrompt.authenticate(createPromptInfo());
 //            showAuthenticationScreen();
-        } else {
+        } else if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q){
             if (BiometricManager.from(this).canAuthenticate(BIOMETRIC_STRONG) == BiometricManager.BIOMETRIC_SUCCESS) {
-//                byte[] initializationVector = EncryptedData.loadInitializationVector(this);
                 Cipher cipher = mCryptographyManager
                         .getInitializedCipherForDecryption(SECRET_KEY, this);
+                System.out.println("authenticateToDecrypt BIOMETRIC_STRONG!  cipher: " + cipher);
                 mBiometricPrompt.authenticate(createPromptInfo(), new BiometricPrompt.CryptoObject(cipher));
             } else {
                 mBiometricPrompt.authenticate(createPromptInfo());
             }
+        } else if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R){
+//            if (BiometricManager.from(this).canAuthenticate(BIOMETRIC_STRONG) == BiometricManager.BIOMETRIC_SUCCESS) {
+//                Cipher cipher = mCryptographyManager
+//                        .getInitializedCipherForDecryption(SECRET_KEY, this);
+//                System.out.println("authenticateToDecrypt BIOMETRIC_STRONG!  cipher: " + cipher);
+//                mBiometricPrompt.authenticate(createPromptInfo(), new BiometricPrompt.CryptoObject(cipher));
+//            } else {
+//                mBiometricPrompt.authenticate(createPromptInfo());
+//            }
+            showAuthenticationScreen();
+        } else {
+            Cipher cipher = mCryptographyManager
+                    .getInitializedCipherForDecryption(SECRET_KEY, this);
+            mBiometricPrompt.authenticate(createPromptInfo(), new BiometricPrompt.CryptoObject(cipher));
         }
     }
 
@@ -406,6 +431,7 @@ public class BiometricActivity extends AppCompatActivity {
         Cipher cipher = null;
         if (cryptoObject != null && cryptoObject.getCipher() != null) {
             cipher = cryptoObject.getCipher();
+            System.out.println("getDecryptedIntent cryptoObject.getCipher() = " + cipher);
         } else {
 //        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M && strongEnabled....) {
 //            byte[] initializationVector = EncryptedData.loadInitializationVector(this);
