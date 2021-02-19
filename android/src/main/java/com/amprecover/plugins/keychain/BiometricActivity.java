@@ -151,9 +151,9 @@ public class BiometricActivity extends AppCompatActivity {
 //            showAuthenticationScreen();
         } else {
             if (BiometricManager.from(this).canAuthenticate(BIOMETRIC_STRONG) == BiometricManager.BIOMETRIC_SUCCESS) {
-                byte[] initializationVector = EncryptedData.loadInitializationVector(this);
+//                byte[] initializationVector = EncryptedData.loadInitializationVector(this);
                 Cipher cipher = mCryptographyManager
-                        .getInitializedCipherForDecryption(SECRET_KEY, initializationVector, this);
+                        .getInitializedCipherForDecryption(SECRET_KEY, this);
                 mBiometricPrompt.authenticate(createPromptInfo(), new BiometricPrompt.CryptoObject(cipher));
             } else {
                 mBiometricPrompt.authenticate(createPromptInfo());
@@ -302,15 +302,15 @@ public class BiometricActivity extends AppCompatActivity {
     }
 
     private void onFailure() {
-        if (BiometricManager.from(this).canAuthenticate(BIOMETRIC_STRONG) == BiometricManager.BIOMETRIC_SUCCESS
-                && mPromptInfo.isDeviceCredentialAllowed()
-                && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
-//                && Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
-                && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            showAuthenticationScreen();
-        } else {
-            finishWithError(PluginError.BIOMETRIC_AUTHENTICATION_FAILED);
-        }
+//        if (BiometricManager.from(this).canAuthenticate(BIOMETRIC_STRONG) == BiometricManager.BIOMETRIC_SUCCESS
+//                && mPromptInfo.isDeviceCredentialAllowed()
+//                && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
+////                && Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
+//                && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+//            showAuthenticationScreen();
+//        } else {
+//            finishWithError(PluginError.BIOMETRIC_AUTHENTICATION_FAILED);
+//        }
     }
 
     private void onError(int errorCode, @NonNull CharSequence errString) {
@@ -320,14 +320,14 @@ public class BiometricActivity extends AppCompatActivity {
             case BiometricPrompt.ERROR_USER_CANCELED:
             case BiometricPrompt.ERROR_CANCELED:
 
-                if (BiometricManager.from(this).canAuthenticate(BIOMETRIC_STRONG) == BiometricManager.BIOMETRIC_SUCCESS
-                        && mPromptInfo.isDeviceCredentialAllowed()
-                        && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
+//                if (BiometricManager.from(this).canAuthenticate(BIOMETRIC_STRONG) == BiometricManager.BIOMETRIC_SUCCESS
+//                        && mPromptInfo.isDeviceCredentialAllowed()
+//                        && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
 //                        && Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
-                        && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-                    // don't finish, because biometric prompt calls ERROR_CANCELED upon completion of showAuthenticationScreen
-                    return;
-                }
+////                        && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+                      // on api24 bad fingerprint returns ERROR_CANCELED AND onFailure, so finishing here breaks the AuthenticationScreen
+//                    return;
+//                }
                 finishWithError(PluginError.BIOMETRIC_DISMISSED);
                 return;
             case BiometricPrompt.ERROR_NEGATIVE_BUTTON:
@@ -408,9 +408,9 @@ public class BiometricActivity extends AppCompatActivity {
             cipher = cryptoObject.getCipher();
         } else {
 //        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M && strongEnabled....) {
-            byte[] initializationVector = null; //EncryptedData.loadInitializationVector(this);
+//            byte[] initializationVector = EncryptedData.loadInitializationVector(this);
             cipher = mCryptographyManager
-                    .getInitializedCipherForDecryption(SECRET_KEY, initializationVector, this);
+                    .getInitializedCipherForDecryption(SECRET_KEY, this);
         }
 
         String secret = mCryptographyManager.decryptData(ciphertext, cipher);

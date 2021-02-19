@@ -250,8 +250,8 @@ public class Cryptography {
             Cipher cipher;
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 cipher = Cipher.getInstance(AES_MODE_M_OR_GREATER);
-                cipher.init(Cipher.ENCRYPT_MODE, getSecretKeyAPIMorGreater(),
-                        new GCMParameterSpec(128, FIXED_IV));
+                cipher.init(Cipher.ENCRYPT_MODE, getSecretKeyAPIMorGreater());
+//                        new GCMParameterSpec(128, FIXED_IV));
             } else {
                 cipher = Cipher.getInstance(AES_MODE_LESS_THAN_M, CIPHER_PROVIDER_NAME_ENCRYPTION_DECRYPTION_AES);
                 try {
@@ -328,7 +328,7 @@ public class Cryptography {
 
 
     @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
-    public Cipher getInitializedCipherForDecryption(String keyName, byte[] initializationVector, Context context) throws CryptoException { // IOException, CertificateException, NoSuchAlgorithmException, InvalidKeyException, UnrecoverableEntryException, InvalidAlgorithmParameterException, NoSuchPaddingException, NoSuchProviderException, KeyStoreException {
+    public Cipher getInitializedCipherForDecryption(String keyName, Context context) throws CryptoException { // IOException, CertificateException, NoSuchAlgorithmException, InvalidKeyException, UnrecoverableEntryException, InvalidAlgorithmParameterException, NoSuchPaddingException, NoSuchProviderException, KeyStoreException {
 
         try {
             initKeys();
@@ -337,7 +337,9 @@ public class Cryptography {
             try {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                     c = Cipher.getInstance(AES_MODE_M_OR_GREATER);
-                    c.init(Cipher.DECRYPT_MODE, getSecretKeyAPIMorGreater(), new GCMParameterSpec(128, FIXED_IV));
+//                    c.init(Cipher.DECRYPT_MODE, getSecretKeyAPIMorGreater(), new GCMParameterSpec(128, FIXED_IV));
+                    byte[] initializationVector = EncryptedData.loadInitializationVector(context);
+                    c.init(Cipher.DECRYPT_MODE, getSecretKeyAPIMorGreater(), new GCMParameterSpec(128, initializationVector));
                 } else {
                     c = Cipher.getInstance(AES_MODE_LESS_THAN_M, CIPHER_PROVIDER_NAME_ENCRYPTION_DECRYPTION_AES);
                     c.init(Cipher.DECRYPT_MODE, getSecretKeyAPILessThanM());
