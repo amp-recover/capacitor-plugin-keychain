@@ -2,16 +2,19 @@ package com.amprecover.plugins.keychain;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.KeyguardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 //import android.hardware.biometrics.BiometricManager;
+import android.hardware.fingerprint.FingerprintManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 
 import androidx.biometric.BiometricManager;
+import androidx.core.content.ContextCompat;
 
 import com.getcapacitor.JSObject;
 import com.getcapacitor.NativePlugin;
@@ -97,6 +100,15 @@ public class Keychain extends Plugin {
 
     @PluginMethod
     public void loadBiometricSecret(PluginCall call) {
+        PluginError error = canAuthenticate();
+        if (error != null) {
+            if (error == PluginError.BIOMETRIC_HARDWARE_NOT_SUPPORTED || error == PluginError.BIOMETRIC_NOT_ENROLLED) {
+                // Don't attempt biometric auth... instead,
+            }
+
+            call.reject(error.name());
+            return;
+        }
         this.runBiometricActivity(call, BiometricActivityType.LOAD_SECRET);
     }
 
@@ -117,15 +129,6 @@ public class Keychain extends Plugin {
 //    }
 
     private void runBiometricActivity(PluginCall call, BiometricActivityType type) {
-        PluginError error = canAuthenticate();
-        if (error != null) {
-            if (error == PluginError.BIOMETRIC_HARDWARE_NOT_SUPPORTED || error == PluginError.BIOMETRIC_NOT_ENROLLED) {
-                // Don't attempt biometric auth... instead,
-            }
-
-            call.reject(error.name());
-            return;
-        }
         saveCall(call);
 
         PromptInfo.Builder mPromptInfoBuilder = new PromptInfo.Builder(
@@ -210,22 +213,37 @@ public class Keychain extends Plugin {
     }
 
     private PluginError canAuthenticate() {
-        int authenticationModes = BIOMETRIC_STRONG | DEVICE_CREDENTIAL;
+        KeyguardManager keyguardManager = ContextCompat
+                .getSystemService(getContext(), KeyguardManager.class);
+//        if (keyguardManager == null
+//                || android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.LOLLIPOP) {
+//            return PluginError.BIOMETRIC_HARDWARE_NOT_SUPPORTED;
+//        }
+        if (keyguardManager != null && !keyguardManager.isKeyguardSecure()) {
+//            msg.setText("Please enable lockscreen security in your device's Settings");
+            return PluginError.BIOMETRIC_SCREEN_GUARD_UNSECURED;
+        }
 
+        int authenticationModes = BIOMETRIC_STRONG | DEVICE_CREDENTIAL;
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
             authenticationModes = BIOMETRIC_STRONG | DEVICE_CREDENTIAL;
         } else if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
             // ????
         } else if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+//            authenticationModes = BIOMETRIC_STRONG; // don't require them to use a fingerprint if they don't want to
+            authenticationModes = BIOMETRIC_WEAK | DEVICE_CREDENTIAL;
+        } else {
             // ????
         }
 
         // NOTE: "Developers that wish to check for the presence of a PIN, pattern,
         // or password on these versions should instead use KeyguardManager.isDeviceSecure()."
         int error = BiometricManager.from(getContext()).canAuthenticate(authenticationModes);
+        System.out.println("canAuthenticate: " + error);
 
         switch (error) {
-            case BiometricManager.BIOMETRIC_ERROR_HW_UNAVAILABLE:
+//            case BiometricManager.BIOMETRIC_ERROR_UNSUPPORTED:  // unsupported authenticationModes
+            case BiometricManager.BIOMETRIC_ERROR_HW_UNAVAILABLE:  // try again later
             case BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE:
                 return PluginError.BIOMETRIC_HARDWARE_NOT_SUPPORTED;
             case BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED:
