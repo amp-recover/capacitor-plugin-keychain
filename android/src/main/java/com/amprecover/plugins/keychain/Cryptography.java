@@ -104,6 +104,7 @@ public class Cryptography {
         KeyStore keyStore = KeyStore.getInstance(ANDROID_KEY_STORE_NAME);
         keyStore.load(null);
 
+        System.out.println("keyStore.containsAlias(KEY_ALIAS): " + keyStore.containsAlias(KEY_ALIAS));
         if (!keyStore.containsAlias(KEY_ALIAS)) {
             initValidKeys();
         } else {
@@ -234,7 +235,13 @@ public class Cryptography {
                         .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
                         .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
                         // NOTE no Random IV. According to above this is less secure but acceptably so.
-                        .setRandomizedEncryptionRequired(false)
+//                        .setRandomizedEncryptionRequired(false)
+//                        .setRandomizedEncryptionRequired(true) default is true
+//                        .setUserAuthenticationRequired(true)
+//                        .setInvalidatedByBiometricEnrollment(true) // requires api24
+//                        .setUserAuthenticationValidityDurationSeconds(0)
+//                        .setUserAuthenticationParameters(0,           // requires api30
+//                                KeyProperties.AUTH_BIOMETRIC_STRONG)
                         .build());
         // Note according to [docs](https://developer.android.com/reference/android/security/keystore/KeyGenParameterSpec.html)
         // this generation will also add it to the keystore.
@@ -244,14 +251,23 @@ public class Cryptography {
     @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
     public Cipher getInitializedCipherForEncryption(String keyName, boolean invalidateOnEnrollment, Context context) throws CryptoException { // NoSuchPaddingException, NoSuchAlgorithmException, UnrecoverableEntryException, CertificateException, KeyStoreException, IOException, InvalidAlgorithmParameterException, InvalidKeyException, NoSuchProviderException {
 
+        removeKeys();
+
         try {
             initKeys();
 
             Cipher cipher;
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 cipher = Cipher.getInstance(AES_MODE_M_OR_GREATER);
-                cipher.init(Cipher.ENCRYPT_MODE, getSecretKeyAPIMorGreater());
+                try {
+                    cipher.init(Cipher.ENCRYPT_MODE, getSecretKeyAPIMorGreater());
 //                        new GCMParameterSpec(128, FIXED_IV));
+                } catch (InvalidKeyException | IOException | IllegalArgumentException | UnrecoverableEntryException e) {
+                    // Since the keys can become bad (perhaps because of lock screen change)
+                    // drop keys in this case.
+                    removeKeys();
+                    throw e;
+                }
             } else {
                 cipher = Cipher.getInstance(AES_MODE_LESS_THAN_M, CIPHER_PROVIDER_NAME_ENCRYPTION_DECRYPTION_AES);
                 try {
@@ -401,6 +417,7 @@ public class Cryptography {
         try {
             initKeys();
 
+            System.out.println("encryptedDecodedData: " + encryptedDecodedData);
             byte[] decodedBytes = cipher.doFinal(encryptedDecodedData);
             return new String(decodedBytes, CHARSET_NAME);
         } catch (Exception e) {

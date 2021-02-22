@@ -241,7 +241,11 @@ public class BiometricActivity extends AppCompatActivity {
                 promptInfoBuilder.setAllowedAuthenticators(DEVICE_CREDENTIAL | BIOMETRIC_WEAK); // oh right... can't use crypto with weak
             }
         } else {
-
+            if (BiometricManager.from(this).canAuthenticate(BIOMETRIC_STRONG) == BiometricManager.BIOMETRIC_SUCCESS) {
+                promptInfoBuilder.setAllowedAuthenticators(BIOMETRIC_STRONG | DEVICE_CREDENTIAL);
+            } else {
+                promptInfoBuilder.setAllowedAuthenticators(DEVICE_CREDENTIAL);
+            }
         }
 //
 //        promptInfoBuilder.setNegativeButtonText(mPromptInfo.getCancelButtonTitle());
