@@ -7,8 +7,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
-//import android.hardware.biometrics.BiometricManager;
-import android.hardware.fingerprint.FingerprintManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
@@ -229,6 +227,7 @@ public class Keychain extends Plugin {
             authenticationModes = BIOMETRIC_STRONG | DEVICE_CREDENTIAL;
         } else if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
             // ????
+//            authenticationModes = BIOMETRIC_WEAK | DEVICE_CREDENTIAL;
         } else if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
 //            authenticationModes = BIOMETRIC_STRONG; // don't require them to use a fingerprint if they don't want to
             authenticationModes = BIOMETRIC_WEAK | DEVICE_CREDENTIAL;

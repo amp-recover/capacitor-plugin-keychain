@@ -224,7 +224,7 @@ public class BiometricActivity extends AppCompatActivity {
             } else {
                 System.out.println("canAuthenticate(BIOMETRIC_STRONG) == false :(");
                 // Crypto-based authentication is not supported for device credential prior to API 30.
-                promptInfoBuilder.setAllowedAuthenticators(DEVICE_CREDENTIAL);
+                promptInfoBuilder.setAllowedAuthenticators(DEVICE_CREDENTIAL | BIOMETRIC_WEAK);
             }
         } else if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
             // oh... but why start with fingerprint prompt if the swipe prompt allows biometrics, too??
