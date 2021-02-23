@@ -164,12 +164,10 @@ public class Keychain extends Plugin {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
             authenticationModes = BIOMETRIC_STRONG | DEVICE_CREDENTIAL;
         } else if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
-            // ????
             authenticationModes = BIOMETRIC_WEAK | DEVICE_CREDENTIAL;
         } else if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
             authenticationModes = BIOMETRIC_WEAK | DEVICE_CREDENTIAL;
         } else {
-            // ????
             authenticationModes = BIOMETRIC_STRONG | DEVICE_CREDENTIAL;
         }
 
