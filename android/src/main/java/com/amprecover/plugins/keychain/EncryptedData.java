@@ -37,7 +37,6 @@ class EncryptedData {
     }
 
     private void save(String key, byte[] value, Context context) {
-        System.out.println("Saving: " + key + " : " + value);
         if (key == null || value == null) {
             return;
         }

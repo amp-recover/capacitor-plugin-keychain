@@ -33,42 +33,12 @@ import static androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTI
     }
 )
 public class Keychain extends Plugin {
-//    protected static final int REQUEST_KEYCHAIN_VALUE = 4252226; // Unique request code
-
-    @PluginMethod
-    public void echo(PluginCall call) {
-        String value = call.getString("value");
-
-        JSObject ret = new JSObject();
-        ret.put("value", value);
-        call.success(ret);
-    }
-
-
-
     private static final String TAG = "Keychain";
-    protected static final int REQUEST_CODE_BIOMETRIC = 1;
-
-//    private CallbackContext mCallbackContext = null;
-//    private PromptInfo.Builder mPromptInfoBuilder;
+    protected static final int REQUEST_CODE_BIOMETRIC = 1; // Unique request code
 
     public void load() {
+        // Called when the plugin is first constructed in the bridge
         Log.v(TAG, "Init Fingerprint");
-//        mPromptInfoBuilder = new PromptInfo.Builder(
-//                this.getApplicationLabel(getActivity())
-//        );
-
-//        // https://developer.android.com/training/sign-in/biometric-auth
-//        // Allows user to authenticate using either a Class 3 biometric or
-//        // their lock screen credential (PIN, pattern, or password).
-//        promptInfo = new BiometricPrompt.PromptInfo.Builder()
-//                .setTitle("Biometric login for my app")
-//                .setSubtitle("Log in using your biometric credential")
-//                // Can't call setNegativeButtonText() and
-//                // setAllowedAuthenticators(...|DEVICE_CREDENTIAL) at the same time.
-//                // .setNegativeButtonText("Use account password")
-//                .setAllowedAuthenticators(BIOMETRIC_STRONG | DEVICE_CREDENTIAL)
-//                .build();
     }
 
     @PluginMethod
@@ -100,10 +70,6 @@ public class Keychain extends Plugin {
     public void loadBiometricSecret(PluginCall call) {
         PluginError error = canAuthenticate();
         if (error != null) {
-            if (error == PluginError.BIOMETRIC_HARDWARE_NOT_SUPPORTED || error == PluginError.BIOMETRIC_NOT_ENROLLED) {
-                // Don't attempt biometric auth... instead,
-            }
-
             call.reject(error.name());
             return;
         }
@@ -120,11 +86,6 @@ public class Keychain extends Plugin {
         }
         sendSuccess(call, "Secret was removed successfully.");
     }
-//
-//    @PluginMethod
-//    public void authenticate(PluginCall call) {
-//        this.runBiometricActivity(call, BiometricActivityType.JUST_AUTHENTICATE);
-//    }
 
     private void runBiometricActivity(PluginCall call, BiometricActivityType type) {
         saveCall(call);
@@ -132,23 +93,18 @@ public class Keychain extends Plugin {
         PromptInfo.Builder mPromptInfoBuilder = new PromptInfo.Builder(
                 this.getApplicationLabel(getActivity())
         );
-//        // Can't call setNegativeButtonText() and
-//        // setAllowedAuthenticators(...|DEVICE_CREDENTIAL) at the same time.
-//        // .setNegativeButtonText("Use account password")
-//        .setAllowedAuthenticators(BIOMETRIC_STRONG | DEVICE_CREDENTIAL);
-
-////        getActivity().runOnUiThread(() -> {
         mPromptInfoBuilder.parseArgs(call, type);
+
         Intent intent = new Intent(getActivity(), BiometricActivity.class);
         intent.putExtras(mPromptInfoBuilder.build().getBundle());
+
         startActivityForResult(call, intent, REQUEST_CODE_BIOMETRIC);
-////        });
     }
 
     // in order to handle the intents result, you have to @Override handleOnActivityResult
     @Override
     protected void handleOnActivityResult(int requestCode, int resultCode, Intent intent) {
-        System.out.println("-> handleOnActivityResult " + resultCode + " " + intent);
+//        System.out.println("-> handleOnActivityResult " + resultCode + " " + intent);
         super.handleOnActivityResult(requestCode, resultCode, intent);
 
         // Get the previously saved call
@@ -169,39 +125,26 @@ public class Keychain extends Plugin {
         }
         
         String methodCalled = call.getMethodName();
-        System.out.println("handleBiometricActivityResult methodCalled: " + methodCalled);
+//        System.out.println("handleBiometricActivityResult methodCalled: " + methodCalled);
         if (methodCalled.equals("registerBiometricSecret")) {
             JSObject resultJson = new JSObject();
             resultJson.put("message", "success");
             call.resolve(resultJson);
         } else if (methodCalled.equals("loadBiometricSecret")) {
-            System.out.println("processing loadBiometricSecret..." + intent.getExtras());
+//            System.out.println("processing loadBiometricSecret..." + intent.getExtras());
             if (intent != null && intent.getExtras() != null) {
-                System.out.println("intent has extras!");
+//                System.out.println("intent has extras!");
                 JSObject resultJson = new JSObject();
                 resultJson.put("secret", intent.getExtras().getString(PromptInfo.SECRET_EXTRA));
-                System.out.println("Resolving loadBiometricSecret: " + resultJson);
+//                System.out.println("Resolving loadBiometricSecret: " + resultJson);
                 call.resolve(resultJson);
             }
         } else {
-            System.out.println("uhh.... unknown method name!! " + methodCalled);
+//            System.out.println("uhh.... unknown method name!! " + methodCalled);
         }
         
     }
-//
-////    @Override
-////    public void onActivityResult(int requestCode, int resultCode, Intent intent) {
-////        super.onActivityResult(requestCode, resultCode, intent);
-////        if (requestCode != REQUEST_CODE_BIOMETRIC) {
-////            return;
-////        }
-////        if (resultCode != Activity.RESULT_OK) {
-////            sendError(intent);
-////            return;
-////        }
-////        sendSuccess(intent);
-////    }
-//
+
     private void sendSuccess(PluginCall call, Intent intent) {
         if (intent != null && intent.getExtras() != null) {
             sendSuccess(call, intent.getExtras().getString(PromptInfo.SECRET_EXTRA));
@@ -213,12 +156,7 @@ public class Keychain extends Plugin {
     private PluginError canAuthenticate() {
         KeyguardManager keyguardManager = ContextCompat
                 .getSystemService(getContext(), KeyguardManager.class);
-//        if (keyguardManager == null
-//                || android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.LOLLIPOP) {
-//            return PluginError.BIOMETRIC_HARDWARE_NOT_SUPPORTED;
-//        }
         if (keyguardManager != null && !keyguardManager.isKeyguardSecure()) {
-//            msg.setText("Please enable lockscreen security in your device's Settings");
             return PluginError.BIOMETRIC_SCREEN_GUARD_UNSECURED;
         }
 
@@ -227,18 +165,18 @@ public class Keychain extends Plugin {
             authenticationModes = BIOMETRIC_STRONG | DEVICE_CREDENTIAL;
         } else if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
             // ????
-//            authenticationModes = BIOMETRIC_WEAK | DEVICE_CREDENTIAL;
+            authenticationModes = BIOMETRIC_WEAK | DEVICE_CREDENTIAL;
         } else if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
-//            authenticationModes = BIOMETRIC_STRONG; // don't require them to use a fingerprint if they don't want to
             authenticationModes = BIOMETRIC_WEAK | DEVICE_CREDENTIAL;
         } else {
             // ????
+            authenticationModes = BIOMETRIC_STRONG | DEVICE_CREDENTIAL;
         }
 
         // NOTE: "Developers that wish to check for the presence of a PIN, pattern,
         // or password on these versions should instead use KeyguardManager.isDeviceSecure()."
         int error = BiometricManager.from(getContext()).canAuthenticate(authenticationModes);
-        System.out.println("canAuthenticate: " + error);
+//        System.out.println("canAuthenticate: " + error);
 
         switch (error) {
 //            case BiometricManager.BIOMETRIC_ERROR_UNSUPPORTED:  // unsupported authenticationModes
@@ -296,23 +234,10 @@ public class Keychain extends Plugin {
     private void sendError(PluginCall call, int code, String message) {
 //        call.reject(message, String.valueOf(code));
         call.reject(message, message);
-
-
-//        try {
-//            resultJson.put("code", code);
-//            resultJson.put("message", message);
-//
-//            PluginResult result = new PluginResult(PluginResult.Status.ERROR, resultJson);
-//            result.setKeepCallback(true);
-//            cordova.getActivity().runOnUiThread(() ->
-//                    Fingerprint.this.mCallbackContext.sendPluginResult(result));
-//        } catch (JSONException e) {
-//            Log.e(TAG, e.getMessage(), e);
-//        }
     }
 
     private void sendSuccess(PluginCall call, String message) {
-        Log.e(TAG, message);
+//        Log.e(TAG, message);
         JSObject resultJson = new JSObject();
         resultJson.put("message", message);
 

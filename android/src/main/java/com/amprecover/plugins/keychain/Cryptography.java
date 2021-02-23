@@ -104,7 +104,7 @@ public class Cryptography {
         KeyStore keyStore = KeyStore.getInstance(ANDROID_KEY_STORE_NAME);
         keyStore.load(null);
 
-        System.out.println("keyStore.containsAlias(KEY_ALIAS): " + keyStore.containsAlias(KEY_ALIAS));
+//        System.out.println("keyStore.containsAlias(KEY_ALIAS): " + keyStore.containsAlias(KEY_ALIAS));
         if (!keyStore.containsAlias(KEY_ALIAS)) {
             initValidKeys();
         } else {
@@ -282,8 +282,8 @@ public class Cryptography {
 
             return cipher;
         } catch (Exception e) {
-            System.out.println("getInitializedCipherForEncryption ERROR " + e);
-            e.printStackTrace();
+//            System.out.println("getInitializedCipherForEncryption ERROR " + e);
+//            e.printStackTrace();
             throw new CryptoException(e.getMessage(), e);
         }
     }
@@ -335,8 +335,8 @@ public class Cryptography {
             byte[] encodedBytes = cipher.doFinal(stringDataToEncrypt.getBytes(CHARSET_NAME));
             return new EncryptedData(encodedBytes, cipher.getIV());
         } catch (Exception e) {
-            System.out.println("encryptData ERROR " + e);
-            e.printStackTrace();
+//            System.out.println("encryptData ERROR " + e);
+//            e.printStackTrace();
             throw new CryptoException(e.getMessage(), e);
         }
 
@@ -369,8 +369,8 @@ public class Cryptography {
 
             return c;
         } catch (Exception e) {
-            System.out.println("getInitializedCipherForDecryption ERROR " + e);
-            e.printStackTrace();
+//            System.out.println("getInitializedCipherForDecryption ERROR " + e);
+//            e.printStackTrace();
             throw new CryptoException(e.getMessage(), e);
         }
     }
@@ -417,12 +417,12 @@ public class Cryptography {
         try {
             initKeys();
 
-            System.out.println("encryptedDecodedData: " + encryptedDecodedData);
+//            System.out.println("encryptedDecodedData: " + encryptedDecodedData);
             byte[] decodedBytes = cipher.doFinal(encryptedDecodedData);
             return new String(decodedBytes, CHARSET_NAME);
         } catch (Exception e) {
-            System.out.println("getInitializedCipherForDecryption ERROR " + e);
-            e.printStackTrace();
+//            System.out.println("getInitializedCipherForDecryption ERROR " + e);
+//            e.printStackTrace();
             throw new CryptoException(e.getMessage(), e);
         }
 
@@ -484,8 +484,8 @@ public class Cryptography {
                 removeKeys(keyStore);
             }
         } catch (Exception e) {
-            System.out.println("removeKeys ERROR " + e);
-            e.printStackTrace();
+//            System.out.println("removeKeys ERROR " + e);
+//            e.printStackTrace();
             throw new CryptoException(e.getMessage(), e);
         }
     }

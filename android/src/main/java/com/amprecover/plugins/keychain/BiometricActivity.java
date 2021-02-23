@@ -15,18 +15,9 @@ import androidx.core.content.ContextCompat;
 
 import com.amprecover.plugins.keychain.keychain.R;
 
-import java.io.IOException;
-import java.security.InvalidAlgorithmParameterException;
-import java.security.InvalidKeyException;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
-import java.security.NoSuchProviderException;
-import java.security.UnrecoverableEntryException;
-import java.security.cert.CertificateException;
 import java.util.concurrent.Executor;
 
 import javax.crypto.Cipher;
-import javax.crypto.NoSuchPaddingException;
 
 import static androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG;
 import static androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_WEAK;
@@ -36,7 +27,6 @@ public class BiometricActivity extends AppCompatActivity {
 
     private static final int REQUEST_CODE_CONFIRM_DEVICE_CREDENTIALS = 2;
     private PromptInfo mPromptInfo;
-//    private CryptographyManager mCryptographyManager;
     private Cryptography mCryptographyManager;
     private static final String SECRET_KEY = "__aio_secret_key";
     private BiometricPrompt mBiometricPrompt;
@@ -71,7 +61,7 @@ public class BiometricActivity extends AppCompatActivity {
     }
 
     private void authenticate() throws CryptoException {
-        System.out.println("Called: Authenticate " + mPromptInfo.getType());
+//        System.out.println("Called: Authenticate " + mPromptInfo.getType());
         switch (mPromptInfo.getType()) {
           case JUST_AUTHENTICATE:
             justAuthenticate();
@@ -82,9 +72,6 @@ public class BiometricActivity extends AppCompatActivity {
           case LOAD_SECRET:
             authenticateToDecrypt();
             return;
-//        case REMOVE_SECRET:
-//            authenticateToRemove();
-//            return;
         }
         throw new CryptoException(PluginError.BIOMETRIC_ARGS_PARSING_FAILED);
     }
@@ -127,7 +114,7 @@ public class BiometricActivity extends AppCompatActivity {
         try {
             finishWithSuccess(null);
         } catch (CryptoException e) {
-            e.printStackTrace();
+//            e.printStackTrace();
             finishWithError(PluginError.BIOMETRIC_UNKNOWN_ERROR);
         }
     }
@@ -145,7 +132,7 @@ public class BiometricActivity extends AppCompatActivity {
             if (BiometricManager.from(this).canAuthenticate(BIOMETRIC_STRONG) == BiometricManager.BIOMETRIC_SUCCESS) {
                 Cipher cipher = mCryptographyManager
                         .getInitializedCipherForDecryption(SECRET_KEY, this);
-                System.out.println("authenticateToDecrypt BIOMETRIC_STRONG!  cipher: " + cipher);
+//                System.out.println("authenticateToDecrypt BIOMETRIC_STRONG!  cipher: " + cipher);
                 mBiometricPrompt.authenticate(createPromptInfo(), new BiometricPrompt.CryptoObject(cipher));
             } else {
                 mBiometricPrompt.authenticate(createPromptInfo());
@@ -171,10 +158,6 @@ public class BiometricActivity extends AppCompatActivity {
             mBiometricPrompt.authenticate(createPromptInfo(), new BiometricPrompt.CryptoObject(cipher));
         }
     }
-
-//    private void authenticateToRemove() throws CryptoException {
-//        mBiometricPrompt.authenticate(createPromptInfo());
-//    }
 
     private BiometricPrompt.PromptInfo createPromptInfo() {
         BiometricPrompt.PromptInfo.Builder promptInfoBuilder = new BiometricPrompt.PromptInfo.Builder()
@@ -211,14 +194,14 @@ public class BiometricActivity extends AppCompatActivity {
                 @Override
                 public void onAuthenticationError(int errorCode, @NonNull CharSequence errString) {
                     super.onAuthenticationError(errorCode, errString);
-                    System.out.println("onAuthenticationError: "+ errorCode +" : "+ errString);
+//                    System.out.println("onAuthenticationError: "+ errorCode +" : "+ errString);
                     onError(errorCode, errString);
                 }
 
                 @Override
                 public void onAuthenticationSucceeded(@NonNull BiometricPrompt.AuthenticationResult result) {
                     super.onAuthenticationSucceeded(result);
-                    System.out.println("onAuthenticationSucceeded");
+//                    System.out.println("onAuthenticationSucceeded");
                     try {
                         finishWithSuccess(result.getCryptoObject());
                     } catch (CryptoException e) {
@@ -229,7 +212,7 @@ public class BiometricActivity extends AppCompatActivity {
                 @Override
                 public void onAuthenticationFailed() {
                     super.onAuthenticationFailed();
-                    System.out.println("onAuthenticationFailed");
+//                    System.out.println("onAuthenticationFailed");
                     onFailure();
                 }
             };
@@ -262,7 +245,7 @@ public class BiometricActivity extends AppCompatActivity {
                 try {
                     finishWithSuccess(null);
                 } catch (CryptoException e) {
-                    e.printStackTrace();
+//                    e.printStackTrace();
                     finishWithError(PluginError.BIOMETRIC_UNKNOWN_ERROR);
                 }
             } else {
@@ -368,14 +351,8 @@ public class BiometricActivity extends AppCompatActivity {
         return null;
     }
 
-//    private void removeKey() throws CryptoException {
-////        mCryptographyManager.encryptData(SECRET_KEY);
-//        // TODO: finish removeKey functionality
-//        mCryptographyManager.removeKey(SECRET_KEY);
-//    }
-
     private void finishWithError(CryptoException e) {
-        e.printStackTrace();
+//        e.printStackTrace();
         finishWithError(e.getError().getValue(), e.getMessage());
     }
 
@@ -388,7 +365,7 @@ public class BiometricActivity extends AppCompatActivity {
     }
 
     private void finishWithError(int code, String message) {
-        System.out.println("finishWithError ERROR " + code + " " + message);
+//        System.out.println("finishWithError ERROR " + code + " " + message);
         Thread.dumpStack();
 
         Intent data = new Intent();
